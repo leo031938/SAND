@@ -1,0 +1,61 @@
+###########################################
+#
+# Switch1.startup switch configuration
+#
+###########################################
+
+# look in lab.conf to find out which network cards it has
+
+######## 1) configure the nics ###########
+# set each nic on the switch with a distinct MAC address
+# we will make it look like it was made by 3com Europe :-)
+
+# first asign MAC address to the nics intended for connection to hosts
+ip link set dev eth0 address 00:00:00:00:04:06
+ip link set dev eth1 address 00:00:00:00:04:07
+ip link set dev eth2 address 00:00:00:00:04:08
+ip link set dev eth3 address 00:00:00:00:04:09
+ip link set dev eth4 address 00:00:00:00:04:10
+
+
+# put each of these nics in a (arbitrary) group to simplify subsequent admin
+ip link set dev eth0 group 1
+ip link set dev eth1 group 1
+ip link set dev eth2 group 1
+ip link set dev eth3 group 1
+ip link set dev eth4 group 1
+
+
+
+######## 2) configure the switch ###########
+
+# create the switch aka bridge (note end-of-line continuation slashes)
+# we will call it "Switch1" 
+# we will configure the switch:
+#   to enable spanning tree protocol (stp) to prevent accidental broadcast storms
+#   to set spanning tree priority to be fairly low (big number = low priority)
+#   to disable vlans 
+ip link add Switch1 type bridge \
+   stp_state 1 \
+   priority 9000 \
+   vlan_filtering 0
+
+# give it a unique MAC address, diff from the nics
+ip link set dev Switch1 address 00:00:00:00:04:06
+
+# make all of the network cards part of the switch using the groups
+ip link set group 1 master Switch1
+ip link set group 1 up
+ip link set group 1 promisc on
+
+
+# lastly, bring the bridge up
+ip link set dev Switch1 up
+
+# capture frames of traffic during dhcp exchange
+# start capturing traffic (max 20 packets) immediately on switch
+# look in <hostlab>/shared/usr/lib/systemd/system/ for the controlling unit file
+# look in <hostlab>/.output/ for the dumped pcap:
+#   a0-sw0-tcpdump20.pcap
+# systemctl start tcpdump20@Switch0
+

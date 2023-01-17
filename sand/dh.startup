@@ -1,0 +1,15 @@
+###############################
+#
+# dh.startup
+#
+###############################
+
+# bring up eth0 according to settings in /etc/network/interfaces
+ifup eth0
+
+# ~~~~~ D H C P ~~~~~~~
+# look in /etc/dnsmasq.d/*
+# Note that by setting the port to 0, then DNS is disabled.
+
+systemctl start dnsmasq.service
+

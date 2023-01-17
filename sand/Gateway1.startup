@@ -1,0 +1,100 @@
+###############################
+#
+# Gateway1.startup
+#
+###############################
+
+ip link set dev eth0 address 02:00:00:00:02:01
+ip addr add 192.168.2.1/24 dev eth0
+ip link set up dev eth0
+
+ip link set dev eth1 address 02:00:00:00:01:01
+ip addr add 80.64.157.1/16 dev eth1
+ip link set up dev eth1
+
+
+ip route add 192.168.4.0/24 via 192.168.2.5
+ip route add 192.168.3.0/24 via 192.168.2.6
+ip route add 192.168.5.0/24 via 192.168.2.6
+ip route add 192.168.6.0/24 via 192.168.2.6
+ip route add 192.168.7.0/24 via 192.168.2.6
+
+ip route add 8.8.8.0/24 via 80.64.157.254
+ip route add 201.224.0.0/16 via 80.64.157.254
+ip route add 22.39.224.0/24 via 80.64.157.254
+
+
+
+iptables -P INPUT DROP
+iptables -P FORWARD DROP
+iptables -P OUTPUT DROP
+
+iptables -A INPUT -p ICMP -j ACCEPT
+iptables -A FORWARD -p ICMP -j ACCEPT
+iptables -A OUTPUT -p ICMP -j ACCEPT
+
+
+#NAT
+#SNAT
+iptables -t nat -A POSTROUTING -o eth1 -j MASQUERADE
+#DNAT
+iptables -t nat -A PREROUTING -i eth1 -p tcp --dport 8080 -j DNAT --to-destination 192.168.2.2:8080
+iptables -t nat -A PREROUTING -i eth1 -p tcp --dport 487 -j DNAT --to-destination 192.168.2.3:487
+iptables -t nat -A PREROUTING -i eth1 -p tcp --dport 587 -j DNAT --to-destination 192.168.2.4:587
+
+
+#FILTER
+#Internet-ExternalDMZ
+#Internet-Squid
+iptables -A FORWARD -i eth1 -o eth0 -p tcp --dport 8080 -s 80.64.0.0/16 -d 192.168.2.2 -j ACCEPT
+iptables -A FORWARD -i eth0 -o eth1 -p tcp --sport 8080 -s 192.168.2.2 -d 80.64.0.0/16 -j ACCEPT
+
+#Internet-OpenVPN
+iptables -A FORWARD -i eth1 -o eth0 -p tcp --dport 487 -s 80.64.0.0/16 -d 192.168.2.3 -j ACCEPT
+iptables -A FORWARD -i eth0 -o eth1 -p tcp --sport 487 -s 192.168.2.3 -d 80.64.0.0/16 -j ACCEPT
+
+#Internet-Mail
+iptables -A FORWARD -i eth1 -o eth0 -p tcp --dport 587 -s 80.64.0.0/16 -d 192.168.2.4 -j ACCEPT
+iptables -A FORWARD -i eth0 -o eth1 -p tcp --sport 587 -s 192.168.2.4 -d 80.64.0.0/16 -j ACCEPT
+
+#Squid-Internet
+iptables -A FORWARD -i eth0 -o eth1 -p tcp -s 192.168.2.2 -d 80.64.0.0/16 -j ACCEPT
+iptables -A FORWARD -i eth1 -o eth0 -p tcp -s 80.64.0.0/16 -d 192.168.2.2 -j ACCEPT
+
+#OpenVPN-Internet
+iptables -A FORWARD -i eth0 -o eth1 -p tcp -s 192.168.2.3 -d 80.64.0.0/16 -j ACCEPT
+iptables -A FORWARD -i eth1 -o eth0 -p tcp -s 80.64.0.0/16 -d 192.168.2.3 -j ACCEPT
+
+#Mail-Internet
+iptables -A FORWARD -i eth0 -o eth1 -p tcp -s 192.168.2.4 -d 80.64.0.0/16 -j ACCEPT
+iptables -A FORWARD -i eth1 -o eth0 -p tcp -s 80.64.0.0/16 -d 192.168.2.4 -j ACCEPT
+
+#ExternalZone-EnterpriseZone
+#Squid-Staff
+iptables -A FORWARD -i eth0 -o eth0 -p tcp --dport 5000 -s 192.168.2.2 -d 192.168.4.0/24 -j ACCEPT
+iptables -A FORWARD -i eth0 -o eth0 -p tcp --sport 5000 -s 192.168.4.0/24 -d 192.168.2.2 -j ACCEPT
+
+#OpenVPN-Staff
+iptables -A FORWARD -i eth0 -o eth0 -p tcp --dport 5000 -s 192.168.2.3 -d 192.168.4.0/24 -j ACCEPT
+iptables -A FORWARD -i eth0 -o eth0 -p tcp --sport 5000 -s 192.168.4.0/24 -d 192.168.2.3 -j ACCEPT
+
+#Mail-Staff
+iptables -A FORWARD -i eth0 -o eth0 -p tcp --dport 5000 -s 192.168.2.4 -d 192.168.4.0/24 -j ACCEPT
+iptables -A FORWARD -i eth0 -o eth0 -p tcp --sport 5000 -s 192.168.4.0/24 -d 192.168.2.4 -j ACCEPT
+
+#EnterpriseZone-ExtranetZone
+#Staff-3rdParty
+iptables -A FORWARD -i eth0 -o eth0 -p tcp --dport 6000 -s 192.168.4.0/24 -d 192.168.3.2 -j ACCEPT
+iptables -A FORWARD -i eth0 -o eth0 -p tcp --sport 6000 -s 192.168.3.2 -d 192.168.4.0/24 -j ACCEPT
+#3rdParty-Staff
+iptables -A FORWARD -i eth0 -o eth0 -p tcp --dport 5000 -s 192.168.3.2 -d 192.168.4.0/24 -j ACCEPT
+iptables -A FORWARD -i eth0 -o eth0 -p tcp --sport 5000 -s 192.168.4.0/24 -d 192.168.3.2 -j ACCEPT
+
+#ManagementZone-ExternalDMZ
+iptables -A FORWARD -i eth0 -o eth0 -p tcp -s 192.168.7.2 -d 192.168.2.0/24 -j ACCEPT
+iptables -A FORWARD -i eth0 -o eth0 -p tcp -s 192.168.2.0/24 -d 192.168.7.2 -j ACCEPT
+
+
+
+
+

@@ -1,0 +1,22 @@
+###############################
+#
+# Internet.startup
+#
+###############################
+
+#mobileuser12
+ip link set dev eth0 address 00:00:00:00:03:01
+ip addr add 22.39.222.3/24 dev eth0
+ip link set up dev eth0
+
+#mobileuser34
+ip link set dev eth0 address 00:00:00:00:03:02
+ip addr add 22.39.223.3/24 dev eth1
+ip link set up dev eth1
+
+#gateway1(wireguard),gateway2(ipsec)
+ip link set dev eth0 address 00:00:00:00:03:03
+ip addr add 213.0.133.161/27 dev eth2
+ip link set up dev eth2
+
+

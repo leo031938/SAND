@@ -1,0 +1,77 @@
+###############################
+#
+# Gateway4.startup
+#
+###############################
+
+ip link set dev eth0 address 00:00:00:00:03:04
+ip addr add 192.168.3.4/24 dev eth0
+ip link set up dev eth0
+
+ip link set dev eth1 address 00:00:00:00:04:05
+ip addr add 192.168.4.5/24 dev eth1
+ip link set up dev eth1
+
+ip link set dev eth2 address 00:00:00:00:05:01
+ip addr add 192.168.5.1/24 dev eth2
+ip link set up dev eth2
+
+ip route add 192.168.2.0/24 via 192.168.3.1
+ip route add 192.168.6.0/24 via 192.168.5.5
+ip route add 192.168.7.0/24 via 192.168.5.5
+
+
+
+
+iptables -P INPUT DROP
+iptables -P FORWARD DROP
+iptables -P OUTPUT DROP
+
+iptables -A INPUT -p ICMP -j ACCEPT
+iptables -A FORWARD -p ICMP -j ACCEPT
+iptables -A OUTPUT -p ICMP -j ACCEPT
+
+
+#EnterpriseZone-InternalDMZ
+#Staff-IntDNS
+iptables -A FORWARD -i eth1 -o eth2 -p tcp --dport 53 -s 192.168.4.0/24 -d 192.168.5.3 -j ACCEPT
+iptables -A FORWARD -i eth2 -o eth1 -p tcp --sport 53 -s 192.168.5.3 -d 192.168.4.0/24 -j ACCEPT
+#Staff-IntWWW
+iptables -A FORWARD -i eth1 -o eth2 -p tcp --dport 8080 -s 192.168.4.0/24 -d 192.168.5.2 -j ACCEPT
+iptables -A FORWARD -i eth2 -o eth1 -p tcp --sport 8080 -s 192.168.5.2 -d 192.168.4.0/24 -j ACCEPT
+#Staff-LDAP
+iptables -A FORWARD -i eth1 -o eth2 -p tcp --dport 389 -s 192.168.4.0/24 -d 192.168.5.4 -j ACCEPT
+iptables -A FORWARD -i eth2 -o eth1 -p tcp --sport 389 -s 192.168.5.4 -d 192.168.4.0/24 -j ACCEPT
+
+#InternalDMZ-RestrictZone
+#IntWWW-DB
+iptables -A FORWARD -i eth2 -o eth2 -p tcp --dport 1433 -s 192.168.5.2 -d 192.168.6.2 -j ACCEPT
+iptables -A FORWARD -i eth2 -o eth2 -p tcp --sport 1433 -s 192.168.6.2 -d 192.168.5.2 -j ACCEPT
+#LDAP-DB
+iptables -A FORWARD -i eth2 -o eth2 -p tcp --dport 1433 -s 192.168.5.4 -d 192.168.6.2 -j ACCEPT
+iptables -A FORWARD -i eth2 -o eth2 -p tcp --sport 1433 -s 192.168.6.2 -d 192.168.5.4 -j ACCEPT
+#ManagementZone-InternalDMZ
+iptables -A FORWARD -i eth2 -o eth2 -p tcp -s 192.168.7.2 -d 192.168.5.0/24 -j ACCEPT
+iptables -A FORWARD -i eth2 -o eth2 -p tcp -s 192.168.5.0/24 -d 192.168.7.2 -j ACCEPT
+#ManagementZone-EnterpriseZone
+iptables -A FORWARD -i eth2 -o eth1 -p tcp -s 192.168.7.2 -d 192.168.4.0/24 -j ACCEPT
+iptables -A FORWARD -i eth1 -o eth2 -p tcp -s 192.168.4.0/24 -d 192.168.7.2 -j ACCEPT
+#ManagementZone-ExtranetZone
+iptables -A FORWARD -i eth2 -o eth0 -p tcp -s 192.168.7.2 -d 192.168.3.0/24 -j ACCEPT
+iptables -A FORWARD -i eth0 -o eth2 -p tcp -s 192.168.3.0/24 -d 192.168.7.2 -j ACCEPT
+#ManagementZone-ExternalDMZ
+iptables -A FORWARD -i eth2 -o eth0 -p tcp -s 192.168.7.2 -d 192.168.2.0/24 -j ACCEPT
+iptables -A FORWARD -i eth0 -o eth2 -p tcp -s 192.168.2.0/24 -d 192.168.7.2 -j ACCEPT
+
+
+
+
+
+
+
+
+
+
+
+
+
